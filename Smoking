@@ -1,0 +1,57 @@
+import streamlit as st
+import pandas as pd
+
+# Function to simulate the Smoking Scenario Order Flow
+def smoking_scenario(order_type, cumulative_qty, venue, price, side, min_notional, market_depth_window):
+    alerts = []
+    
+    # Step 2: Minimum Notional Check (Near Side)
+    if cumulative_qty <= min_notional:
+        return alerts
+    
+    # Step 3: Far Side Open Order Interest (Simulated)
+    far_side_orders = [
+        {"order_id": "FSO1", "venue": "VenueA", "price": 100, "side": "Sell", "cumulative_qty": 3000000},
+        {"order_id": "FSO2", "venue": "VenueB", "price": 101, "side": "Sell", "cumulative_qty": 2000000}
+    ]
+    
+    # Step 4: Market Depth Check (Simulated)
+    market_depth = {
+        "VenueA": {"best_bid": 99, "best_ask": 100},
+        "VenueB": {"best_bid": 100, "best_ask": 101}
+    }
+    
+    # Step 5: Open Order Price Check
+    for order in far_side_orders:
+        if order["venue"] in market_depth:
+            best_bid = market_depth[order["venue"]]["best_bid"]
+            best_ask = market_depth[order["venue"]]["best_ask"]
+            
+            if side == "Buy" and price >= best_bid:
+                alerts.append({"order_id": order["order_id"], "venue": order["venue"], "severity": "MediumE"})
+            elif side == "Sell" and price <= best_ask:
+                alerts.append({"order_id": order["order_id"], "venue": order["venue"], "severity": "MediumE"})
+    
+    return alerts
+
+# Streamlit UI
+st.title("Smoking Scenario Order Flow")
+
+order_type = st.selectbox("Order Type", ["Filled", "Partially Filled"])
+cumulative_qty = st.number_input("Cumulative Quantity (GBP)", min_value=0)
+venue = st.text_input("Venue")
+price = st.number_input("Price", min_value=0.0)
+side = st.selectbox("Side", ["Buy", "Sell"])
+min_notional = st.number_input("Minimum Notional (GBP)", min_value=0, value=5000000)
+market_depth_window = st.number_input("Market Depth Lookup Window (seconds)", min_value=0, value=45)
+
+if st.button("Run Scenario"):
+    alerts = smoking_scenario(order_type, cumulative_qty, venue, price, side, min_notional, market_depth_window)
+    if alerts:
+        st.write("Alerts Generated:")
+        df = pd.DataFrame(alerts)
+        st.dataframe(df)
+    else:
+        st.write("No alerts generated.")
+
+
