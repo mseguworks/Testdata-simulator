@@ -4,18 +4,23 @@ import random
 import string
 import time
 
-# Initialize session state for parameters
+# Initialize session state for parameters and validation steps
 if 'parameters' not in st.session_state:
     st.session_state['parameters'] = {
-        'Smoking': {
-            'num_orders': 100,
-            'intensity': 0.5,
-            'NearSideThreshold': 5000000,
-            'FarSideNotional': 5000000,
-            'LookupWindow': 45
-        },
-        'Spoofing': {'num_orders': 100, 'intensity': 0.5},
-        'Wash Trade': {'num_orders': 100, 'intensity': 0.5}
+        'Smoking': {'num_orders': 100, 'intensity': 0.5}
+    }
+
+if 'validation_steps' not in st.session_state:
+    st.session_state['validation_steps'] = {
+        'Smoking': [
+            "Identify Near Side based on the side of the executed order",
+            "Only consider Filled or Partially Filled orders",
+            "Notional Amount > £5,000,000",
+            "Check for Far Side orders for potential abuse",
+            "Far Side orders must be: Placed within 45 seconds before Near Side execution, Event type New or Amended, Notional ≤ £5,000,000",
+            "Far Side order must be at the top of the book, verified using market depth from the same venue",
+            "If all conditions are met, trigger an alert"
+        ]
     }
 
 # Function to generate order data
@@ -57,36 +62,25 @@ intensity = st.slider("Behavior Intensity", min_value=0.0, max_value=1.0, value=
 st.session_state['parameters'][scenario]['num_orders'] = num_orders
 st.session_state['parameters'][scenario]['intensity'] = intensity
 
-# Display Smoking scenario validation steps
-if scenario == 'Smoking':
-    st.subheader("Smoking Scenario Validation Steps")
-    smoking_steps = [
-        "1. Identify Near Side based on the side of the executed order",
-        "2. Only consider Filled or Partially Filled orders",
-        "3. Notional Amount > £5,000,000",
-        "4. Check for Far Side orders for potential abuse",
-        "5. Far Side orders must be:",
-        "   • Placed within 45 seconds before Near Side execution",
-        "   • Event type New or Amended",
-        "   • Notional ≤ £5,000,000",
-        "6. Far Side order must be at the top of the book, verified using market depth from the same venue",
-        "7. If all conditions are met, trigger an alert"
-    ]
-    for step in smoking_steps:
-        st.write(step)
+# Section to view and configure validation steps
+st.header("Configure Validation Steps")
 
-# Section to add new parameters
-st.header("Add New Parameters")
+st.subheader(f"Validation Steps for {scenario}")
+for i, step in enumerate(st.session_state['validation_steps'][scenario]):
+    new_step = st.text_area(f"Step {i+1}", value=step, key=f"step_{i}")
+    st.session_state['validation_steps'][scenario][i] = new_step
 
-new_param_name = st.text_input("Parameter Name")
-new_param_value = st.text_input("Parameter Value")
+# Section to add new validation steps
+st.subheader("Add New Validation Step")
 
-if st.button("Add Parameter"):
-    if new_param_name and new_param_value:
-        st.session_state['parameters'][scenario][new_param_name] = new_param_value
-        st.success(f"Added parameter {new_param_name} with value {new_param_value} to {scenario} scenario.")
+new_step = st.text_area("New Step Description", key="new_step")
+
+if st.button("Add Validation Step"):
+    if new_step:
+        st.session_state['validation_steps'][scenario].append(new_step)
+        st.success(f"Added new validation step to {scenario} scenario.")
     else:
-        st.error("Please enter both parameter name and value.")
+        st.error("Please enter a step description.")
 
 # Section to generate and download data
 st.header("Generate and Download Data")
