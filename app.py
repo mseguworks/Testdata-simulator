@@ -4,7 +4,7 @@ import random
 import string
 import time
 
-# Function to generate order data for Smoking scenario
+# Function to generate test order data for Smoking scenario
 def generate_smoking_data(num_orders, smoking_intensity):
     orders = []
     for _ in range(num_orders):
@@ -26,7 +26,7 @@ def generate_smoking_data(num_orders, smoking_intensity):
         })
     return orders
 
-# Function to generate order data for Spoofing scenario
+# Function to generate test order data for Spoofing scenario
 def generate_spoofing_data(num_orders, spoofing_intensity):
     orders = []
     for _ in range(num_orders):
@@ -48,7 +48,7 @@ def generate_spoofing_data(num_orders, spoofing_intensity):
         })
     return orders
 
-# Function to generate order data for Wash Trade scenario
+# Function to generate test order data for Wash Trade scenario
 def generate_wash_trade_data(num_orders, wash_trade_intensity):
     orders = []
     for _ in range(num_orders):
@@ -73,17 +73,16 @@ def generate_wash_trade_data(num_orders, wash_trade_intensity):
 # Streamlit app
 st.title("Market Abuse Scenario Simulator")
 
-# Section for Smoking Scenario Order Flow
-st.header("Smoking Scenario Order Flow")
-
-num_orders_smoking = st.number_input("Number of Orders for Smoking Scenario", min_value=1, value=100)
+# Smoking Scenario
+st.header("Smoking Scenario")
+num_orders_smoking = st.number_input("Number of Orders (Smoking)", min_value=1, value=100)
 smoking_intensity = st.slider("Smoking Behavior Intensity", min_value=0.0, max_value=1.0, value=0.5)
 
 if st.button("Generate Smoking Data"):
     smoking_orders = generate_smoking_data(num_orders_smoking, smoking_intensity)
     df_smoking = pd.DataFrame(smoking_orders)
     
-    st.write("Generated Smoking Scenario Order Data:")
+    st.write("Generated Smoking Order Data:")
     st.dataframe(df_smoking)
 
     csv_smoking = df_smoking.to_csv(index=False)
@@ -94,17 +93,16 @@ if st.button("Generate Smoking Data"):
         mime='text/csv',
     )
 
-# Section for Spoofing Scenario Order Flow
-st.header("Spoofing Scenario Order Flow")
-
-num_orders_spoofing = st.number_input("Number of Orders for Spoofing Scenario", min_value=1, value=100)
+# Spoofing Scenario
+st.header("Spoofing Scenario")
+num_orders_spoofing = st.number_input("Number of Orders (Spoofing)", min_value=1, value=100)
 spoofing_intensity = st.slider("Spoofing Behavior Intensity", min_value=0.0, max_value=1.0, value=0.5)
 
 if st.button("Generate Spoofing Data"):
     spoofing_orders = generate_spoofing_data(num_orders_spoofing, spoofing_intensity)
     df_spoofing = pd.DataFrame(spoofing_orders)
     
-    st.write("Generated Spoofing Scenario Order Data:")
+    st.write("Generated Spoofing Order Data:")
     st.dataframe(df_spoofing)
 
     csv_spoofing = df_spoofing.to_csv(index=False)
@@ -115,17 +113,16 @@ if st.button("Generate Spoofing Data"):
         mime='text/csv',
     )
 
-# Section for Wash Trade Scenario Order Flow
-st.header("Wash Trade Scenario Order Flow")
-
-num_orders_wash_trade = st.number_input("Number of Orders for Wash Trade Scenario", min_value=1, value=100)
+# Wash Trade Scenario
+st.header("Wash Trade Scenario")
+num_orders_wash_trade = st.number_input("Number of Orders (Wash Trade)", min_value=1, value=100)
 wash_trade_intensity = st.slider("Wash Trade Behavior Intensity", min_value=0.0, max_value=1.0, value=0.5)
 
 if st.button("Generate Wash Trade Data"):
     wash_trade_orders = generate_wash_trade_data(num_orders_wash_trade, wash_trade_intensity)
     df_wash_trade = pd.DataFrame(wash_trade_orders)
     
-    st.write("Generated Wash Trade Scenario Order Data:")
+    st.write("Generated Wash Trade Order Data:")
     st.dataframe(df_wash_trade)
 
     csv_wash_trade = df_wash_trade.to_csv(index=False)
@@ -136,8 +133,4 @@ if st.button("Generate Wash Trade Data"):
         mime='text/csv',
     )
 
-# Placeholder for adding new scenarios
-st.header("Add New Scenario")
-
-st.write("This section is a placeholder for future logic to add new scenarios and configure parameters.")
 
