@@ -13,7 +13,7 @@ if 'parameters' not in st.session_state:
     }
 
 # Function to generate order data
-def generate_order_data(num_orders, intensity, scenario):
+def generate_order_data(num_orders, intensity, scenario, additional_params):
     orders = []
     for _ in range(num_orders):
         order_id = ''.join(random.choices(string.ascii_uppercase + string.digits, k=6))
@@ -23,7 +23,7 @@ def generate_order_data(num_orders, intensity, scenario):
         price = round(random.uniform(90, 110), 2)
         quantity = random.randint(1000, 1000000)
         behavior = random.random() < intensity
-        orders.append({
+        order = {
             'order_id': order_id,
             'timestamp': timestamp,
             'venue': venue,
@@ -32,7 +32,9 @@ def generate_order_data(num_orders, intensity, scenario):
             'quantity': quantity,
             'scenario': scenario,
             'behavior': behavior
-        })
+        }
+        order.update(additional_params)
+        orders.append(order)
     return orders
 
 # Streamlit app
@@ -51,6 +53,11 @@ intensity = st.slider("Behavior Intensity", min_value=0.0, max_value=1.0, value=
 st.session_state['parameters'][scenario]['num_orders'] = num_orders
 st.session_state['parameters'][scenario]['intensity'] = intensity
 
+# Display existing parameters
+st.write("Existing Parameters:")
+for param, value in st.session_state['parameters'][scenario].items():
+    st.write(f"{param}: {value}")
+
 # Section to add new parameters
 st.header("Add New Parameters")
 
@@ -68,7 +75,8 @@ if st.button("Add Parameter"):
 st.header("Generate and Download Data")
 
 if st.button("Generate Data"):
-    orders = generate_order_data(num_orders, intensity, scenario)
+    additional_params = {k: v for k, v in st.session_state['parameters'][scenario].items() if k not in ['num_orders', 'intensity']}
+    orders = generate_order_data(num_orders, intensity, scenario, additional_params)
     df = pd.DataFrame(orders)
     
     st.write("Generated Order Data:")
