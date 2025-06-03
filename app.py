@@ -7,7 +7,7 @@ import time
 # Initialize session state for parameters and validation steps
 if 'parameters' not in st.session_state:
     st.session_state['parameters'] = {
-        'Smoking': {'num_orders': 100, 'intensity': 0.5}
+        'Smoking': {'num_orders': 100, 'intensity': 0.5, 'NearSideThreshold': 5000000, 'FarSideNotional': 5000000, 'LookupWindow': 45}
     }
 
 if 'validation_steps' not in st.session_state:
@@ -24,7 +24,7 @@ if 'validation_steps' not in st.session_state:
     }
 
 # Function to generate order data
-def generate_order_data(num_orders, intensity, scenario):
+def generate_order_data(num_orders, intensity, scenario, params):
     orders = []
     for _ in range(num_orders):
         order_id = ''.join(random.choices(string.ascii_uppercase + string.digits, k=6))
@@ -42,7 +42,10 @@ def generate_order_data(num_orders, intensity, scenario):
             'price': price,
             'quantity': quantity,
             'scenario': scenario,
-            'behavior': behavior
+            'behavior': behavior,
+            'NearSideThreshold': params['NearSideThreshold'],
+            'FarSideNotional': params['FarSideNotional'],
+            'LookupWindow': params['LookupWindow']
         })
     return orders
 
@@ -57,36 +60,39 @@ scenario = st.selectbox("Select Scenario", list(st.session_state['parameters'].k
 st.subheader(f"Parameters for {scenario}")
 num_orders = st.number_input("Number of Orders", min_value=1, value=st.session_state['parameters'][scenario]['num_orders'])
 intensity = st.slider("Behavior Intensity", min_value=0.0, max_value=1.0, value=st.session_state['parameters'][scenario]['intensity'])
+near_side_threshold = st.number_input("Near Side Threshold", min_value=0, value=st.session_state['parameters'][scenario]['NearSideThreshold'])
+far_side_notional = st.number_input("Far Side Notional", min_value=0, value=st.session_state['parameters'][scenario]['FarSideNotional'])
+lookup_window = st.number_input("Lookup Window (seconds)", min_value=0, value=st.session_state['parameters'][scenario]['LookupWindow'])
 
 # Update parameters in session state
 st.session_state['parameters'][scenario]['num_orders'] = num_orders
 st.session_state['parameters'][scenario]['intensity'] = intensity
+st.session_state['parameters'][scenario]['NearSideThreshold'] = near_side_threshold
+st.session_state['parameters'][scenario]['FarSideNotional'] = far_side_notional
+st.session_state['parameters'][scenario]['LookupWindow'] = lookup_window
 
 # Section to view and configure validation steps
 st.header("Configure Validation Steps")
 
 st.subheader(f"Validation Steps for {scenario}")
 for i, step in enumerate(st.session_state['validation_steps'][scenario]):
-    new_step = st.text_area(f"Step {i+1}", value=step, key=f"step_{i}")
+    new_step = st.text_area(f"Step {i+1}", value=step, key=f"{scenario}_step_{i}")
     st.session_state['validation_steps'][scenario][i] = new_step
 
-# Section to add new validation steps
-st.subheader("Add New Validation Step")
-
-new_step = st.text_area("New Step Description", key="new_step")
-
+# Add new validation step
+new_step = st.text_input("New Validation Step")
 if st.button("Add Validation Step"):
     if new_step:
         st.session_state['validation_steps'][scenario].append(new_step)
-        st.success(f"Added new validation step to {scenario} scenario.")
+        st.success(f"Added new validation step: {new_step}")
     else:
-        st.error("Please enter a step description.")
+        st.error("Please enter a validation step.")
 
 # Section to generate and download data
 st.header("Generate and Download Data")
 
 if st.button("Generate Data"):
-    orders = generate_order_data(num_orders, intensity, scenario)
+    orders = generate_order_data(num_orders, intensity, scenario, st.session_state['parameters'][scenario])
     df = pd.DataFrame(orders)
     
     st.write("Generated Order Data:")
