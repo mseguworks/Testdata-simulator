@@ -3,39 +3,10 @@ import pandas as pd
 import random
 import string
 import time
+from io import BytesIO
 
-# Function to check minimum notional
-def check_min_notional(cumulative_qty, threshold):
-    return cumulative_qty > threshold
-
-# Function to simulate far side open order interest
-def simulate_far_side_open_orders(order_time, lookup_window):
-    # Simulate open orders within the lookup window
-    # For simplicity, we return a fixed list of open orders
-    open_orders = [
-        {"order_id": "O1", "venue": "ABC", "base_ccy_qty": 4000000, "side": "Buy", "price": 100},
-        {"order_id": "O2", "venue": "XYZ", "base_ccy_qty": 3000000, "side": "Sell", "price": 105}
-    ]
-    return open_orders
-
-# Function to check market depth availability
-def check_market_depth(order_time, lookup_window):
-    # Simulate market depth availability
-    # For simplicity, we return True
-    return True
-
-# Function to compare order price to market depth
-def compare_order_price(open_orders, market_depth, side):
-    alerts = []
-    for order in open_orders:
-        if side == "Buy" and order["price"] >= market_depth["best_bid"]:
-            alerts.append({"order_id": order["order_id"], "severity": "MediumE"})
-        elif side == "Sell" and order["price"] <= market_depth["best_ask"]:
-            alerts.append({"order_id": order["order_id"], "severity": "MediumE"})
-    return alerts
-
-# Function to generate test order data
-def generate_test_order_data(num_orders, smoking_intensity):
+# Function to generate order data based on scenario logic
+def generate_order_data(num_orders, scenario_logic, **kwargs):
     orders = []
     for _ in range(num_orders):
         order_id = ''.join(random.choices(string.ascii_uppercase + string.digits, k=6))
@@ -44,7 +15,7 @@ def generate_test_order_data(num_orders, smoking_intensity):
         side = random.choice(['Buy', 'Sell'])
         price = round(random.uniform(90, 110), 2)
         quantity = random.randint(1000, 1000000)
-        smoking_behavior = random.random() < smoking_intensity
+        scenario_behavior = scenario_logic(**kwargs)
         orders.append({
             'order_id': order_id,
             'timestamp': timestamp,
@@ -52,72 +23,82 @@ def generate_test_order_data(num_orders, smoking_intensity):
             'side': side,
             'price': price,
             'quantity': quantity,
-            'smoking_behavior': smoking_behavior
+            'scenario_behavior': scenario_behavior
         })
     return orders
+
+# Example scenario logic functions
+def smoking_scenario_logic(smoking_intensity):
+    return random.random() < smoking_intensity
+
+def spoofing_scenario_logic(spoofing_intensity):
+    return random.random() < spoofing_intensity
+
+def wash_trade_scenario_logic(wash_trade_intensity):
+    return random.random() < wash_trade_intensity
 
 # Streamlit app
 st.title("Market Abuse Scenario Simulator")
 
-# Section for Smoking Scenario Order Flow
-st.header("Smoking Scenario Order Flow")
+# Section for Generating Order Data
+st.header("Generate Order Data")
+
+# Select scenario
+scenario = st.selectbox("Select Scenario", ["Smoking", "Spoofing", "Wash Trade"])
 
 # Input fields for order data
-order_type = st.selectbox("Order Type", ["Filled", "Partially Filled"])
-cumulative_qty = st.number_input("Cumulative Quantity (GBP)", min_value=0)
-venue = st.text_input("Venue")
-price = st.number_input("Price", min_value=0.0)
-side = st.selectbox("Side", ["Buy", "Sell"])
-
-# Parameters
-threshold = st.number_input("Minimum Notional Threshold (GBP)", min_value=0, value=5000000)
-lookup_window = st.number_input("Market Depth Lookup Window (seconds)", min_value=0, value=45)
-
-# Button to run the scenario
-if st.button("Run Scenario"):
-    # Step 2: Check minimum notional
-    if check_min_notional(cumulative_qty, threshold):
-        # Step 3: Simulate far side open order interest
-        open_orders = simulate_far_side_open_orders(order_type, lookup_window)
-
-        # Step 4: Check market depth availability
-        if check_market_depth(order_type, lookup_window):
-            # Simulate market depth data
-            market_depth = {"best_bid": 99, "best_ask": 106}
-
-            # Step 5: Compare order price to market depth
-            alerts = compare_order_price(open_orders, market_depth, side)
-
-            # Display alerts
-            if alerts:
-                st.write("Alerts:")
-                for alert in alerts:
-                    st.write(f"Order ID: {alert['order_id']}, Severity: {alert['severity']}")
-            else:
-                st.write("No alerts triggered.")
-        else:
-            st.write("Market depth not available. Alert triggered.")
-    else:
-        st.write("Minimum notional not met. No alert triggered.")
-
-# Section for Generating Test Order Data
-st.header("Generate Test Order Data for Smoking Scenario")
-
 num_orders = st.number_input("Number of Orders", min_value=1, value=100)
-smoking_intensity = st.slider("Smoking Behavior Intensity", min_value=0.0, max_value=1.0, value=0.5)
 
-if st.button("Generate Test Data"):
-    orders = generate_test_order_data(num_orders, smoking_intensity)
+# Scenario-specific parameters
+if scenario == "Smoking":
+    smoking_intensity = st.slider("Smoking Behavior Intensity", min_value=0.0, max_value=1.0, value=0.5)
+    scenario_logic = smoking_scenario_logic
+    scenario_params = {'smoking_intensity': smoking_intensity}
+elif scenario == "Spoofing":
+    spoofing_intensity = st.slider("Spoofing Behavior Intensity", min_value=0.0, max_value=1.0, value=0.5)
+    scenario_logic = spoofing_scenario_logic
+    scenario_params = {'spoofing_intensity': spoofing_intensity}
+elif scenario == "Wash Trade":
+    wash_trade_intensity = st.slider("Wash Trade Behavior Intensity", min_value=0.0, max_value=1.0, value=0.5)
+    scenario_logic = wash_trade_scenario_logic
+    scenario_params = {'wash_trade_intensity': wash_trade_intensity}
+
+# Button to generate data
+if st.button("Generate Data"):
+    orders = generate_order_data(num_orders, scenario_logic, **scenario_params)
     df = pd.DataFrame(orders)
     
-    st.write("Generated Test Order Data:")
+    st.write("Generated Order Data:")
     st.dataframe(df)
 
+    # Download as CSV
     csv = df.to_csv(index=False)
     st.download_button(
         label="Download data as CSV",
         data=csv,
-        file_name='test_order_data.csv',
+        file_name='order_data.csv',
         mime='text/csv',
     )
+
+    # Download as Excel
+    output = BytesIO()
+    writer = pd.ExcelWriter(output, engine='xlsxwriter')
+    df.to_excel(writer, index=False, sheet_name='Sheet1')
+    writer.save()
+    processed_data = output.getvalue()
+    st.download_button(
+        label="Download data as Excel",
+        data=processed_data,
+        file_name='order_data.xlsx',
+        mime='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+    )
+
+# Section for Adding New Scenarios
+st.header("Add New Scenario")
+
+new_scenario_name = st.text_input("Scenario Name")
+new_scenario_intensity = st.slider("Scenario Intensity", min_value=0.0, max_value=1.0, value=0.5)
+
+if st.button("Add Scenario"):
+    st.write(f"New scenario '{new_scenario_name}' with intensity {new_scenario_intensity} added.")
 
