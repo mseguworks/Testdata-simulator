@@ -4,27 +4,19 @@ import random
 import string
 import time
 
-# Initialize session state for parameters and validation steps
+# Initialize session state for parameters and rules
 if 'parameters' not in st.session_state:
     st.session_state['parameters'] = {
-        'Smoking': {'num_orders': 100, 'intensity': 0.5, 'NearSideThreshold': 5000000, 'FarSideNotional': 5000000, 'LookupWindow': 45}
+        'Smoking': {'num_orders': 100, 'intensity': 0.5, 'NearSideThreshold': 5000000, 'FarSideNotional': 5000000, 'LookupWindow': 45},
+        'Spoofing': {'num_orders': 100, 'intensity': 0.5},
+        'Wash Trade': {'num_orders': 100, 'intensity': 0.5}
     }
 
-if 'validation_steps' not in st.session_state:
-    st.session_state['validation_steps'] = {
-        'Smoking': [
-            "Identify Near Side based on the side of the executed order",
-            "Only consider Filled or Partially Filled orders",
-            "Notional Amount > £5,000,000",
-            "Check for Far Side orders for potential abuse",
-            "Far Side orders must be: Placed within 45 seconds before Near Side execution, Event type New or Amended, Notional ≤ £5,000,000",
-            "Far Side order must be at the top of the book, verified using market depth from the same venue",
-            "If all conditions are met, trigger an alert"
-        ]
-    }
+if 'rules' not in st.session_state:
+    st.session_state['rules'] = []
 
 # Function to generate order data
-def generate_order_data(num_orders, intensity, scenario, params):
+def generate_order_data(num_orders, intensity, scenario):
     orders = []
     for _ in range(num_orders):
         order_id = ''.join(random.choices(string.ascii_uppercase + string.digits, k=6))
@@ -42,10 +34,7 @@ def generate_order_data(num_orders, intensity, scenario, params):
             'price': price,
             'quantity': quantity,
             'scenario': scenario,
-            'behavior': behavior,
-            'NearSideThreshold': params['NearSideThreshold'],
-            'FarSideNotional': params['FarSideNotional'],
-            'LookupWindow': params['LookupWindow']
+            'behavior': behavior
         })
     return orders
 
@@ -60,9 +49,9 @@ scenario = st.selectbox("Select Scenario", list(st.session_state['parameters'].k
 st.subheader(f"Parameters for {scenario}")
 num_orders = st.number_input("Number of Orders", min_value=1, value=st.session_state['parameters'][scenario]['num_orders'])
 intensity = st.slider("Behavior Intensity", min_value=0.0, max_value=1.0, value=st.session_state['parameters'][scenario]['intensity'])
-near_side_threshold = st.number_input("Near Side Threshold", min_value=0, value=st.session_state['parameters'][scenario]['NearSideThreshold'])
-far_side_notional = st.number_input("Far Side Notional", min_value=0, value=st.session_state['parameters'][scenario]['FarSideNotional'])
-lookup_window = st.number_input("Lookup Window (seconds)", min_value=0, value=st.session_state['parameters'][scenario]['LookupWindow'])
+near_side_threshold = st.number_input("Near Side Threshold", min_value=0, value=st.session_state['parameters'][scenario].get('NearSideThreshold', 5000000))
+far_side_notional = st.number_input("Far Side Notional", min_value=0, value=st.session_state['parameters'][scenario].get('FarSideNotional', 5000000))
+lookup_window = st.number_input("Lookup Window (seconds)", min_value=0, value=st.session_state['parameters'][scenario].get('LookupWindow', 45))
 
 # Update parameters in session state
 st.session_state['parameters'][scenario]['num_orders'] = num_orders
@@ -71,28 +60,42 @@ st.session_state['parameters'][scenario]['NearSideThreshold'] = near_side_thresh
 st.session_state['parameters'][scenario]['FarSideNotional'] = far_side_notional
 st.session_state['parameters'][scenario]['LookupWindow'] = lookup_window
 
-# Section to view and configure validation steps
-st.header("Configure Validation Steps")
+# Section to add new validation rules
+st.header("Add New Validation Rules")
 
-st.subheader(f"Validation Steps for {scenario}")
-for i, step in enumerate(st.session_state['validation_steps'][scenario]):
-    new_step = st.text_area(f"Step {i+1}", value=step, key=f"{scenario}_step_{i}")
-    st.session_state['validation_steps'][scenario][i] = new_step
+attribute = st.selectbox("Select Attribute", ["SeqNum", "OrderDetailsId", "OrderId", "VersionId", "EventType", "Type", "OrderFeedId", "TimeInForce", "InitialTime", "OrderTime", "ExecutionTime", "CurrencyPair", "InstrumentCode", "SecurityClassId", "AssetClassId", "DealtCurrency", "Price", "Qty", "LeavesQty", "CumulativeQty", "FillQty", "FillPrice", "PartyId", "SalesBookId", "Side", "Trader", "IsParent", "ParentId", "IsAmended", "AmendedTime", "IsCancelled", "CancelledTime", "IsMonitored", "IsClientOrder", "BaseCcyQty", "ReceivedTime", "OrigCurrencyPair", "OrigPrice", "OrigSide", "OrderFeedCounter", "OrderAltId", "OrigOrderId", "ClientOrderId", "OrigClientOrderId", "ExpireTime", "MarketId", "MaturityDate", "StrikePrice", "PutCall", "PartyType", "Desk", "Value", "BaseCcyValue", "OrderBookPartyId", "OrderAttrib1", "OrderAttrib2", "OrderAttrib3", "OrderAttrib4", "OrderAttrib5", "OrderAttrib6", "OrderAttrib7", "OrderAttrib8", "Comments", "DimPartyId", "DimDeskId", "DimTraderId", "DimSecurityClassId", "DimMarketId", "DimInstrumentId", "DimDate", "DimTimeOfDay", "DimSalesBookId", "Venue", "IsCreated", "OrigQty", "DeskDescription", "SettlementRef", "ExecutionStrategy", "Owner", "Modifier", "DimModifierId", "DimOwnerId", "OrigLeavesQty", "LastFilledSize", "LastFilledPrice", "OrigExecAuthority", "PortfolioId", "ExecutionId", "ParValue", "TradableItems", "NumberOfTradableItems", "QuoteType", "SalesPerson", "EventSummary", "ClientName", "InternalCtpy", "InstrumentRef1", "InstrumentRef2", "InstrumentQuoteType", "SettlementDate", "Position", "Region", "FIorIRDFlag", "ClientNucleusID", "BankSide", "ProductDescription", "StellarOrderStatus", "StellarTransactionStatus", "StellarTransactionType", "BaseCcyLeavesQty", "IsSpreadOrder", "LinkedOrder", "OrdInstrumentType", "OrdExecType", "TrOrderStatus", "UnderlyingInstrumentCode", "ComponentId", "DimUnderlyingInstrumentId", "CancelCategory", "CFICode", "Origination", "QtyNotation"])
+condition = st.selectbox("Select Condition", ["==", "!=", ">", "<", ">=", "<="])
+value = st.text_input("Enter Value")
 
-# Add new validation step
-new_step = st.text_input("New Validation Step")
-if st.button("Add Validation Step"):
-    if new_step:
-        st.session_state['validation_steps'][scenario].append(new_step)
-        st.success(f"Added new validation step: {new_step}")
+if st.button("Add Rule"):
+    if attribute and condition and value:
+        st.session_state['rules'].append({'attribute': attribute, 'condition': condition, 'value': value})
+        st.success(f"Added rule: {attribute} {condition} {value}")
     else:
-        st.error("Please enter a validation step.")
+        st.error("Please select attribute, condition, and enter value.")
+
+# Section to view and edit validation rules
+st.header("Validation Rules")
+
+for i, rule in enumerate(st.session_state['rules']):
+    st.write(f"Rule {i+1}: {rule['attribute']} {rule['condition']} {rule['value']}")
+    new_attribute = st.selectbox(f"Edit Attribute {i+1}", ["SeqNum", "OrderDetailsId", "OrderId", "VersionId", "EventType", "Type", "OrderFeedId", "TimeInForce", "InitialTime", "OrderTime", "ExecutionTime", "CurrencyPair", "InstrumentCode", "SecurityClassId", "AssetClassId", "DealtCurrency", "Price", "Qty", "LeavesQty", "CumulativeQty", "FillQty", "FillPrice", "PartyId", "SalesBookId", "Side", "Trader", "IsParent", "ParentId", "IsAmended", "AmendedTime", "IsCancelled", "CancelledTime", "IsMonitored", "IsClientOrder", "BaseCcyQty", "ReceivedTime", "OrigCurrencyPair", "OrigPrice", "OrigSide", "OrderFeedCounter", "OrderAltId", "OrigOrderId", "ClientOrderId", "OrigClientOrderId", "ExpireTime", "MarketId", "MaturityDate", "StrikePrice", "PutCall", "PartyType", "Desk", "Value", "BaseCcyValue", "OrderBookPartyId", "OrderAttrib1", "OrderAttrib2", "OrderAttrib3", "OrderAttrib4", "OrderAttrib5", "OrderAttrib6", "OrderAttrib7", "OrderAttrib8", "Comments", "DimPartyId", "DimDeskId", "DimTraderId", "DimSecurityClassId", "DimMarketId", "DimInstrumentId", "DimDate", "DimTimeOfDay", "DimSalesBookId", "Venue", "IsCreated", "OrigQty", "DeskDescription", "SettlementRef", "ExecutionStrategy", "Owner", "Modifier", "DimModifierId", "DimOwnerId", "OrigLeavesQty", "LastFilledSize", "LastFilledPrice", "OrigExecAuthority", "PortfolioId", "ExecutionId", "ParValue", "TradableItems", "NumberOfTradableItems", "QuoteType", "SalesPerson", "EventSummary", "ClientName", "InternalCtpy", "InstrumentRef1", "InstrumentRef2", "InstrumentQuoteType", "SettlementDate", "Position", "Region", "FIorIRDFlag", "ClientNucleusID", "BankSide", "ProductDescription", "StellarOrderStatus", "StellarTransactionStatus", "StellarTransactionType", "BaseCcyLeavesQty", "IsSpreadOrder", "LinkedOrder", "OrdInstrumentType", "OrdExecType", "TrOrderStatus", "UnderlyingInstrumentCode", "ComponentId", "DimUnderlyingInstrumentId", "CancelCategory", "CFICode", "Origination", "QtyNotation"], index=["SeqNum", "OrderDetailsId", "OrderId", "VersionId", "EventType", "Type", "OrderFeedId", "TimeInForce", "InitialTime", "OrderTime", "ExecutionTime", "CurrencyPair", "InstrumentCode", "SecurityClassId", "AssetClassId", "DealtCurrency", "Price", "Qty", "LeavesQty", "CumulativeQty", "FillQty", "FillPrice", "PartyId", "SalesBookId", "Side", "Trader", "IsParent", "ParentId", "IsAmended", "AmendedTime", "IsCancelled", "CancelledTime", "IsMonitored", "IsClientOrder", "BaseCcyQty", "ReceivedTime", "OrigCurrencyPair", "OrigPrice", "OrigSide", "OrderFeedCounter", "OrderAltId", "OrigOrderId", "ClientOrderId", "OrigClientOrderId", "ExpireTime", "MarketId", "MaturityDate", "StrikePrice", "PutCall", "PartyType", "Desk", "Value", "BaseCcyValue", "OrderBookPartyId", "OrderAttrib1", "OrderAttrib2", "OrderAttrib3", "OrderAttrib4", "OrderAttrib5", "OrderAttrib6", "OrderAttrib7", "OrderAttrib8", "Comments", "DimPartyId", "DimDeskId", "DimTraderId", "DimSecurityClassId", "DimMarketId", "DimInstrumentId", "DimDate", "DimTimeOfDay", "DimSalesBookId", "Venue", "IsCreated", "OrigQty", "DeskDescription", "SettlementRef", "ExecutionStrategy", "Owner", "Modifier", "DimModifierId", "DimOwnerId", "OrigLeavesQty", "LastFilledSize", "LastFilledPrice", "OrigExecAuthority", "PortfolioId", "ExecutionId", "ParValue", "TradableItems", "NumberOfTradableItems", "QuoteType", "SalesPerson", "EventSummary", "ClientName", "InternalCtpy", "InstrumentRef1", "InstrumentRef2", "InstrumentQuoteType", "SettlementDate", "Position", "Region", "FIorIRDFlag", "ClientNucleusID", "BankSide", "ProductDescription", "StellarOrderStatus", "StellarTransactionStatus", "StellarTransactionType", "BaseCcyLeavesQty", "IsSpreadOrder", "LinkedOrder", "OrdInstrumentType", "OrdExecType", "TrOrderStatus", "UnderlyingInstrumentCode", "ComponentId", "DimUnderlyingInstrumentId", "CancelCategory", "CFICode", "Origination", "QtyNotation"].index(rule['attribute']))
+    new_condition = st.selectbox(f"Edit Condition {i+1}", ["==", "!=", ">", "<", ">=", "<="], index=["==", "!=", ">", "<", ">=", "<="].index(rule['condition']))
+    new_value = st.text_input(f"Edit Value {i+1}", value=rule['value'])
+
+    if st.button(f"Update Rule {i+1}"):
+        st.session_state['rules'][i] = {'attribute': new_attribute, 'condition': new_condition, 'value': new_value}
+        st.success(f"Updated rule {i+1}: {new_attribute} {new_condition} {new_value}")
+
+    if st.button(f"Delete Rule {i+1}"):
+        st.session_state['rules'].pop(i)
+        st.success(f"Deleted rule {i+1}")
 
 # Section to generate and download data
 st.header("Generate and Download Data")
 
 if st.button("Generate Data"):
-    orders = generate_order_data(num_orders, intensity, scenario, st.session_state['parameters'][scenario])
+    orders = generate_order_data(num_orders, intensity, scenario)
     df = pd.DataFrame(orders)
     
     st.write("Generated Order Data:")
